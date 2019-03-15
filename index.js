@@ -1,6 +1,5 @@
 const dut = require('./build/Release/dut.node');
-const {Sim, RisingEdge, FallingEdge, Interfaces} = require('signalflip-js');
-const {Elastic} = Interfaces;
+const {Sim, RisingEdge, FallingEdge} = require('signalflip-js');
 const _ = require('lodash');
 
 
@@ -8,9 +7,9 @@ const clk = new Sim(dut, dut.eval, dut.clk);
 dut.init();
 
 const init = () => {
-    dut.t0_data(0);
-    dut.t0_valid(0);
-    dut.i0_ready(1);
+//    dut.mdc(0);
+//    dut.mdio(0);
+    dut.en(0);
     dut.clk(0);
     dut.rstf(0);
 };
@@ -27,46 +26,18 @@ clk.on('negedge', (props) => {
 });
 
 let range = n => Array.from(Array(n).keys())
-
-const target = new Elastic(clk, 0, dut.clk, dut.t0_data, dut.t0_valid, dut.t0_ready, null);
-const initiator = new Elastic(clk, 1, dut.clk, dut.i0_data, dut.i0_valid, dut.i0_ready, null);
-initiator.randomize = 0;
-target.randomize = 0;
-target.init();
-initiator.init();
-
-
 const u = x => x >>> 0;
 
-const model = (din_array) => {
-    let dout = [];
-    while(din_array.length > 0) {
-	dout.push(din_array[0] << 2);
-	din_array.shift();
-    }
-    return dout;
-};
+function* enableTxn() {
+    yield () => { return dut.rstf() == 1 };
+    yield* RisingEdge(dut.clk); 
+    dut.en(1)
+    yield* RisingEdge(dut.clk);
+    dut.en(0);
+}
 
-
-let din = range(5).map(x => u(x));
-target.txArray = din.slice();
-
-clk.finishTask(() => {
-    let dout = model(din.slice());
-    
-
-    console.log('initator array:: ', initiator.rxArray);
-    console.log('dou array:: ', dout);
-    console.log('are equal: ', _.isEqual(dout, initiator.rxArray));
-    console.log('expected #: ', dout.length, ' actual #: ', initiator.rxArray.length);
-    dout.map((x,i) => {
-	if(x != initiator.rxArray[i])
-	    console.log('x: ', x, ' i: ', i, 'initiator[i]: ', initiator.rxArray[i]);
-    });
-});
-
-//clk.addTask(txn());
-clk.run(100);
+clk.addTask(enableTxn());
+clk.run(200);
 
 
 
