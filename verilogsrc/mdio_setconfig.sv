@@ -1,5 +1,6 @@
 module mdio_setconfig
-  (output wire mdc,
+  (
+   output wire mdc,
    inout wire  mdio,
    input wire  en,
    input wire  clk, rstf
@@ -7,7 +8,7 @@ module mdio_setconfig
 
    
    
-   enum logic [2:0] {IDLE,
+   enum logic [3:0] {IDLE,
                      WAIT1,
                      SET_PAGE,
                      WAIT2,
@@ -20,11 +21,11 @@ module mdio_setconfig
    logic [7:0] q_cnt, n_cnt;
    logic [31:0] q_send_data, n_send_data;
    logic [15:0] q_get_data, n_get_data;
-   logic       dout;
+   logic       dout, dout_en;
 
-   localparam logic [31:0] PAGE_PARAM = {2'b01, 2'b01, 5'b0, 5'b10110, 2'b10, 16'h2}; //start, write, phy address, reg addr, ta, reg data
+   logic [31:0] PAGE_PARAM = {2'b01, 2'b01, 5'b0, 5'b10110, 2'b10, 16'h2}; //start, write, phy address, reg addr, ta, reg data
    localparam logic [13:0] READ_CMD_PARAM = {2'b01, 2'b10, 5'b0, 5'b11000}; //start, write, phy address, reg addr, ta, reg data
-   localparam logic [31:0] WRITE_REG_PARAM = {2'b01, 2,01, 5'b0, 5'b11000, 2'b10, 16'h2000};
+   localparam logic [31:0] WRITE_REG_PARAM = {2'b01, 2'b01, 5'b0, 5'b11000, 2'b10, 16'h2000};
    
 
    assign mdio = dout_en ? dout : 'z;
@@ -35,6 +36,7 @@ module mdio_setconfig
       n_state = q_state;
       n_cnt = q_cnt;
       dout = 0;
+      dout_en = 0;
       case(q_state)
         IDLE: begin
            n_cnt = 0;
@@ -46,6 +48,7 @@ module mdio_setconfig
            n_state = SET_PAGE;
         end
         SET_PAGE: begin
+           dout_en = 1;
            n_cnt = q_cnt + 1;
            dout = q_send_data[31];
            n_send_data = q_send_data << 1;
@@ -54,10 +57,11 @@ module mdio_setconfig
         end
         WAIT2: begin
            n_cnt = 0;
-           n_send_data = READ_CMD_PARAM << 18;
+           n_send_data = {READ_CMD_PARAM,18'b0};
            n_state = READ_CMD;
         end
         READ_CMD: begin
+           dout_en = 1;
            n_cnt = q_cnt + 1;
            dout = q_send_data[31];
            n_send_data = q_send_data << 1;
@@ -87,6 +91,7 @@ module mdio_setconfig
            n_state = WRITE_REG;
         end
         WRITE_REG: begin
+           dout_en = 1;
            n_cnt = q_cnt + 1;
            dout = q_send_data[31];
            n_send_data = q_send_data << 1;
