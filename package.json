@@ -19,9 +19,9 @@
       "rebuild": "cmake-js rebuild",
       "build": "cmake-js compile",
       "clean": "cmake-js clean && make clean",
-      "all": "npm run compile && npm run build && npm run mocha",
-       "test": "node index.js",
-       "mocha": "mocha",
+      "all": "npm run compile && npm run build && npm run test",
+      "test": "node index.js",
+      "mocha": "mocha",
       "gen": "node gensigs.js"
    },
    "gypfile": true,
